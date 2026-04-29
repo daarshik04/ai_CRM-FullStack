@@ -18,33 +18,26 @@ class AgentState(TypedDict):
 def tool_node(state: AgentState):
     query = state["query"].lower()
 
-    # CREATE
     if any(w in query for w in [
         "met", "meeting", "discussed", "shared",
         "distributed", "talked", "explained",
         "gave", "handed"
     ]):
-        print("TOOL: CREATE")
         result = log_interaction_tool.invoke(query)
 
-    # EDIT (🔥 FIXED)
     elif any(w in query for w in [
         "actually", "was", "change", "update", "instead",
         "samples", "sentiment", "name", "material"
     ]):
-        print("TOOL: EDIT")
         result = edit_interaction_tool.invoke(query)
 
     elif "summarize" in query:
-        print("TOOL: SUMMARIZE")
         result = summarize_tool.invoke(query)
 
     elif "extract" in query:
-        print("TOOL: EXTRACT")
         result = extract_entities_tool.invoke(query)
 
     else:
-        print("TOOL: FOLLOWUP")
         result = followup_tool.invoke(query)
 
     return {"result": result}

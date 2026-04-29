@@ -14,7 +14,6 @@ def chat(query: str):
 
     print("RAW RESULT:", raw)
 
-    # Structured response (form fill)
     if isinstance(raw, dict):
         tz = pytz.timezone("Asia/Kolkata")
         now = datetime.now(tz)
@@ -24,5 +23,4 @@ def chat(query: str):
 
         return raw
 
-    # Text response (summarize / extract / followup)
     return {"message": raw}

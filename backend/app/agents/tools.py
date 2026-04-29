@@ -31,19 +31,7 @@ def log_interaction_tool(text: str):
 Return STRICT flat JSON ONLY.
 
 Fields:
-hcp_name, topics, sentiment, materials, samples, outcomes, follow_up
-
-Example:
-Today I met Dr. Smith, discussed product X, shared brochure, distributed 3 samples, positive sentiment
-
-Output:
-{{
-  "hcp_name": "Dr. Smith",
-  "topics": "product X",
-  "sentiment": "Positive",
-  "materials": "brochure",
-  "samples": "3 samples"
-}}
+hcp_name, topics, sentiment, materials, samples, follow_up
 
 Input:
 {text}
@@ -55,7 +43,7 @@ Input:
     data = safe_parse_json(raw)
 
     clean = {}
-    for key in ["hcp_name", "topics", "sentiment", "materials", "samples", "outcomes", "follow_up"]:
+    for key in ["hcp_name", "topics", "sentiment", "materials", "samples", "follow_up"]:
         val = data.get(key)
         if val and str(val).strip() != "":
             clean[key] = val
@@ -65,14 +53,19 @@ Input:
 
     obj = Interaction(
         hcp_name=clean.get("hcp_name", ""),
-        notes=text,
         summary=clean.get("topics", ""),
         sentiment=clean.get("sentiment", ""),
-        follow_up=clean.get("follow_up", "")
+        materials=clean.get("materials", ""),
+        samples=clean.get("samples", ""),
+        follow_up=clean.get("follow_up", ""),
+        notes=text
     )
 
     db.add(obj)
     db.commit()
+    db.refresh(obj)
+
+    print("DB SAVED:", obj.hcp_name, obj.summary, obj.sentiment)
 
     return clean
 
@@ -85,7 +78,7 @@ def edit_interaction_tool(text: str):
     """Update existing interaction fields safely."""
 
     db = SessionLocal()
-    obj = db.query(Interaction).first()
+    obj = db.query(Interaction).order_by(Interaction.id.desc()).first()
 
     if not obj:
         return {}
@@ -100,7 +93,7 @@ Examples:
 "Sentiment was negative" → {{"sentiment": "Negative"}}
 
 Allowed:
-hcp_name, topics, sentiment, materials, samples, outcomes, follow_up
+hcp_name, topics, sentiment, materials, samples, follow_up
 
 Input:
 {text}
@@ -116,38 +109,56 @@ Input:
     for k, v in updates.items():
         if v and str(v).strip() != "":
             clean_updates[k] = v
-            if hasattr(obj, k):
-                setattr(obj, k, v)
+
+            # 🔥 MAP topics → summary column
+            if k == "topics":
+                setattr(obj, "summary", v)
+            else:
+                if hasattr(obj, k):
+                    setattr(obj, k, v)
 
     if "sentiment" in clean_updates:
         clean_updates["sentiment"] = clean_updates["sentiment"].capitalize()
+        obj.sentiment = clean_updates["sentiment"]
 
     db.commit()
+    db.refresh(obj)
+
+    print("DB UPDATED:", obj.hcp_name, obj.summary, obj.sentiment)
 
     return clean_updates
 
 
 # -----------------------------
-# SUMMARIZE TOOL
+# SUMMARY TOOL
 # -----------------------------
 @tool
 def summarize_tool(text: str):
     """Summarize latest interaction."""
 
     db = SessionLocal()
-    obj = db.query(Interaction).first()
+    obj = db.query(Interaction).order_by(Interaction.id.desc()).first()
 
-    if not obj:
+    if not obj or not obj.hcp_name:
         return "No interaction found."
 
     context = f"""
 Doctor: {obj.hcp_name}
 Topics: {obj.summary}
 Sentiment: {obj.sentiment}
-Follow up: {obj.follow_up}
+Materials: {obj.materials}
+Samples: {obj.samples}
 """
 
-    return call_llm(f"Summarize this interaction:\n{context}")
+    print("SUMMARY CONTEXT:", context)
+
+    prompt = f"""
+Summarize this interaction accurately using ONLY the provided data.
+
+{context}
+"""
+
+    return call_llm(prompt)
 
 
 # -----------------------------
@@ -155,20 +166,15 @@ Follow up: {obj.follow_up}
 # -----------------------------
 @tool
 def extract_entities_tool(text: str):
-    """Extract entities from latest interaction."""
+    """Extract doctor and topics from latest interaction."""
 
     db = SessionLocal()
-    obj = db.query(Interaction).first()
+    obj = db.query(Interaction).order_by(Interaction.id.desc()).first()
 
-    if not obj:
+    if not obj or not obj.hcp_name:
         return "No interaction found."
 
-    context = f"""
-Doctor: {obj.hcp_name}
-Topics: {obj.summary}
-"""
-
-    return call_llm(f"Extract doctor and topics:\n{context}")
+    return f"Doctor: {obj.hcp_name}, Topics: {obj.summary}"
 
 
 # -----------------------------
@@ -176,5 +182,24 @@ Topics: {obj.summary}
 # -----------------------------
 @tool
 def followup_tool(text: str):
-    """Suggest follow-up."""
-    return call_llm(f"Suggest next follow-up:\n{text}")
+    """Suggest follow-up based on latest interaction."""
+
+    db = SessionLocal()
+    obj = db.query(Interaction).order_by(Interaction.id.desc()).first()
+
+    if not obj or not obj.hcp_name:
+        return "No interaction found."
+
+    context = f"""
+Doctor: {obj.hcp_name}
+Topics: {obj.summary}
+Sentiment: {obj.sentiment}
+"""
+
+    prompt = f"""
+Based on this interaction, suggest a specific follow-up action.
+
+{context}
+"""
+
+    return call_llm(prompt)
