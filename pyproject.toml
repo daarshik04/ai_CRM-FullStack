@@ -8,6 +8,7 @@ dependencies = [
     "alembic>=1.18.4",
     "fastapi>=0.136.1",
     "groq>=1.2.0",
+    "langchain>=1.2.15",
     "langgraph>=1.1.10",
     "psycopg2-binary>=2.9.12",
     "pydantic>=2.13.3",

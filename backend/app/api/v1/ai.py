@@ -2,35 +2,27 @@ from fastapi import APIRouter
 from backend.app.agents.graph import run_agent
 from datetime import datetime
 import pytz
-import json
 
 router = APIRouter()
-
-
-def add_current_datetime(data):
-    tz = pytz.timezone("Asia/Kolkata")
-    now = datetime.now(tz)
-
-    data["date"] = now.strftime("%Y-%m-%d")
-    data["time"] = now.strftime("%H:%M")
-
-    return data
 
 
 @router.post("/chat")
 def chat(query: str):
     result = run_agent(query)
 
-    data = result.get("result")
+    raw = result.get("result", {})
 
-    print("RAW RESULT FROM AGENT:", data)
+    print("RAW RESULT:", raw)
 
-    if isinstance(data, dict):
-        return add_current_datetime(data)
+    # Structured response (form fill)
+    if isinstance(raw, dict):
+        tz = pytz.timezone("Asia/Kolkata")
+        now = datetime.now(tz)
 
-    try:
-        parsed = json.loads(data)
-        return add_current_datetime(parsed)
-    except Exception as e:
-        print("JSON PARSE ERROR:", e)
-        return {"error": "Invalid JSON from AI"}
+        raw["date"] = now.strftime("%Y-%m-%d")
+        raw["time"] = now.strftime("%H:%M")
+
+        return raw
+
+    # Text response (summarize / extract / followup)
+    return {"message": raw}

@@ -1,8 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const interactionSlice = createSlice({
-  name: "interaction",
-  initialState: {
+const initialState = {
   hcp_name: "",
   interaction_type: "Meeting",
   date: "",
@@ -13,13 +11,18 @@ const interactionSlice = createSlice({
   sentiment: "",
   outcomes: "",
   follow_up: ""
-},
+};
+
+const interactionSlice = createSlice({
+  name: "interaction",
+  initialState,
   reducers: {
     setFormData: (state, action) => {
-  Object.assign(state, action.payload);
-}
+      Object.assign(state, action.payload); // ✅ IMPORTANT FIX
+    },
+    resetForm: () => initialState
   }
 });
 
-export const { setFormData } = interactionSlice.actions;
+export const { setFormData, resetForm } = interactionSlice.actions;
 export default interactionSlice.reducer;
