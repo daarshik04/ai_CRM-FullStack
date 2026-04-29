@@ -3,20 +3,21 @@ import { createSlice } from "@reduxjs/toolkit";
 const interactionSlice = createSlice({
   name: "interaction",
   initialState: {
-    form: {
-      hcp_name: "",
-      topics: "",
-      sentiment: "Neutral",
-      outcomes: "",
-      follow_up: "",
-      date: "",
-      time: ""
-    }
-  },
+  hcp_name: "",
+  interaction_type: "Meeting",
+  date: "",
+  time: "",
+  topics: "",
+  materials: "",
+  samples: "",
+  sentiment: "",
+  outcomes: "",
+  follow_up: ""
+},
   reducers: {
     setFormData: (state, action) => {
-      state.form = { ...state.form, ...action.payload };
-    }
+  Object.assign(state, action.payload);
+}
   }
 });
 

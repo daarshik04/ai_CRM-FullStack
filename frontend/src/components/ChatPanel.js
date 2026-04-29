@@ -8,8 +8,8 @@ export default function ChatPanel() {
   const [messages, setMessages] = useState([]);
   const dispatch = useDispatch();
 
-  const formatAIResponse = (data) => {
-    const fields = Object.keys(data);
+  const formatAIResponse = (cleanData) => {
+    const fields = Object.keys(cleanData);
 
     if (fields.length === 0) {
       return "No updates made.";
@@ -19,31 +19,34 @@ export default function ChatPanel() {
   };
 
   const send = async () => {
-    const res = await chatAI(input);
+  if (!input.trim()) return;
 
-    if (res.data.error) {
-      console.log("AI error:", res.data);
-      return;
+  console.log("Sending:", input);
+
+  const res = await chatAI(input);
+
+  if (res.data.error) {
+    console.log("AI error:", res.data);
+    return;
+  }
+
+  const cleanData = Object.fromEntries(
+    Object.entries(res.data).filter(([_, v]) => v !== "" && v !== null)
+  );
+
+  dispatch(setFormData(cleanData));
+
+  setMessages((prev) => [
+    ...prev,
+    { role: "user", text: input },
+    {
+      role: "ai",
+      text: `✅ Interaction updated successfully. Updated fields: ${Object.keys(cleanData).join(", ")}`
     }
+  ]);
 
-    // clean data (important)
-    const cleanData = Object.fromEntries(
-      Object.entries(res.data).filter(([_, v]) => v !== "" && v !== null)
-    );
-
-    // update form (merge)
-    dispatch(setFormData(cleanData));
-
-    // update chat UI
-    setMessages([
-      ...messages,
-      { role: "user", text: input },
-      { role: "ai", text: formatAIResponse(cleanData) }
-    ]);
-
-    setInput("");
-  };
-
+  setInput("");
+};
   return (
     <div>
       <h3>AI Assistant</h3>
